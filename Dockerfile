@@ -9,11 +9,8 @@ RUN npm ci
 # Copy all source files
 COPY . .
 
-# Generate Prisma client before build
-RUN npx prisma generate
-
-# Build Next.js app
-RUN npm run build
+# Generate Prisma client and build Next.js
+RUN npx prisma generate && npm run build
 
 
 FROM node:20-alpine AS runner
