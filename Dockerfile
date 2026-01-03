@@ -9,6 +9,9 @@ RUN npm ci
 # Copy all source files
 COPY . .
 
+# Set dummy DATABASE_URL for build (will be overridden at runtime)
+ENV DATABASE_URL="mysql://user:password@localhost:3306/penjadwalan_guru"
+
 # Generate Prisma client and build Next.js
 RUN npx prisma generate && npm run build
 
