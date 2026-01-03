@@ -1,21 +1,29 @@
-FROM node:20-alpine
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files
+# Copy package files and install ALL dependencies (dev + prod) for build
 COPY package*.json ./
+RUN npm ci
 
-# Install dependencies
-RUN npm ci --only=production
-
-# Copy app files
+# Copy all source files and build
 COPY . .
-
-# Build aplikasi
 RUN npm run build
 
-# Expose port
-EXPOSE 3000
 
-# Start aplikasi
+FROM node:20-alpine AS runner
+WORKDIR /app
+
+# Install only production dependencies in the final image
+COPY package*.json ./
+RUN npm ci --only=production
+
+# Copy build artifacts and static files from builder
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/next.config.js ./next.config.js
+COPY --from=builder /app/prisma ./prisma
+
+# Expose port and run
+EXPOSE 3000
 CMD ["npm", "start"]
