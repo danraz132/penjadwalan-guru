@@ -1,0 +1,65 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Guru {
+  id          Int       @id @default(autoincrement())
+  nama        String
+  nip         String    @unique
+  mataPelajar Matpel[]
+  jadwal      Jadwal[]
+  preferensi  Preferensi?
+}
+
+model Matpel {
+  id             Int       @id @default(autoincrement())
+  nama           String
+  jamPerMinggu   Int
+  guruId         Int
+  guru           Guru       @relation(fields: [guruId], references: [id])
+  jadwal         Jadwal[]
+}
+
+model Kelas {
+  id       Int       @id @default(autoincrement())
+  nama     String
+  tingkat  Int
+  jadwal   Jadwal[]
+}
+
+model Ruangan {
+  id        Int       @id @default(autoincrement())
+  nama      String
+  kapasitas Int
+  jadwal    Jadwal[]
+}
+
+model Jadwal {
+  id         Int      @id @default(autoincrement())
+  kelasId    Int
+  matpelId   Int
+  guruId     Int
+  ruanganId  Int
+  hari       String
+  jamMulai   String
+  jamSelesai String
+
+  kelas    Kelas    @relation(fields: [kelasId], references: [id])
+  matpel   Matpel   @relation(fields: [matpelId], references: [id])
+  guru     Guru     @relation(fields: [guruId], references: [id])
+  ruangan  Ruangan  @relation(fields: [ruanganId], references: [id])
+}
+
+model Preferensi {
+  id        Int    @id @default(autoincrement())
+  guruId    Int    @unique
+  hariSuka  String?
+  jamSuka   String?
+  jamTidak  String?
+  guru      Guru   @relation(fields: [guruId], references: [id])
+}
