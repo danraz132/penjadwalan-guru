@@ -10,7 +10,7 @@ RUN npm ci
 COPY . .
 
 # Set dummy DATABASE_URL for build (will be overridden at runtime)
-ENV DATABASE_URL="mysql://user:password@localhost:3306/penjadwalan_guru"
+ENV DATABASE_URL="mysql://root:NUKEoLXiPiQMeatwdgXgNPbLGDhinkOs@mysql.railway.internal:3306/railway"
 
 # Generate Prisma client and build Next.js
 RUN npx prisma generate && npm run build
