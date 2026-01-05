@@ -11,28 +11,70 @@ export default function RuanganPage() {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ id: 0, nama: "", kapasitas: "" });
   const [search, setSearch] = useState("");
+  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
 
   async function fetchRuangan() {
-    const res = await fetch("/api/ruangan");
-    setRuangan(await res.json());
+    try {
+      const res = await fetch("/api/ruangan");
+      if (!res.ok) throw new Error("Gagal mengambil data ruangan");
+      setRuangan(await res.json());
+    } catch (error) {
+      setMessage("Error: " + (error as Error).message);
+    }
   }
 
-  useEffect(() => { fetchRuangan(); }, []);
+  useEffect(() => {
+    fetchRuangan();
+  }, []);
 
   async function saveRuangan(e: any) {
     e.preventDefault();
-    await fetch("/api/ruangan", {
-      method: form.id ? "PUT" : "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, kapasitas: Number(form.kapasitas) }),
-    });
-    setOpen(false);
-    fetchRuangan();
+    setLoading(true);
+    setMessage("");
+    try {
+      const response = await fetch("/api/ruangan", {
+        method: form.id ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...form, kapasitas: Number(form.kapasitas) }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Gagal menyimpan ruangan");
+      }
+
+      setMessage(form.id ? "✅ Ruangan berhasil diperbarui" : "✅ Ruangan berhasil ditambahkan");
+      setOpen(false);
+      setForm({ id: 0, nama: "", kapasitas: "" });
+      fetchRuangan();
+    } catch (error) {
+      setMessage("❌ Error: " + (error as Error).message);
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function deleteRuangan(id: number) {
-    await fetch(`/api/ruangan?id=${id}`, { method: "DELETE" });
-    fetchRuangan();
+    if (!confirm("Apakah Anda yakin ingin menghapus ruangan ini?")) return;
+    
+    setLoading(true);
+    setMessage("");
+    try {
+      const response = await fetch(`/api/ruangan?id=${id}`, { method: "DELETE" });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Gagal menghapus ruangan");
+      }
+
+      setMessage("✅ Ruangan berhasil dihapus");
+      fetchRuangan();
+    } catch (error) {
+      setMessage("❌ Error: " + (error as Error).message);
+    } finally {
+      setLoading(false);
+    }
   }
 
   const filteredRuangan = ruangan.filter((r) =>
@@ -47,6 +89,12 @@ export default function RuanganPage() {
           <PlusCircle size={18} /> Tambah Ruangan
         </Button>
       </div>
+
+      {message && (
+        <div className={`p-3 rounded ${message.startsWith("❌") ? "bg-red-100 text-red-800" : "bg-green-100 text-green-800"}`}>
+          {message}
+        </div>
+      )}
 
       <div className="mb-4">
         <input
@@ -67,7 +115,7 @@ export default function RuanganPage() {
             <button onClick={() => { setForm(r); setOpen(true); }} className="text-blue-600 hover:scale-110 transition">
               <Pencil size={18} />
             </button>
-            <button onClick={() => deleteRuangan(r.id)} className="text-red-600 hover:scale-110 transition">
+            <button onClick={() => deleteRuangan(r.id)} className="text-red-600 hover:scale-110 transition" disabled={loading}>
               <Trash2 size={18} />
             </button>
           </div>
@@ -92,7 +140,7 @@ export default function RuanganPage() {
               required
               className="border p-2 w-full rounded focus:ring focus:ring-indigo-200"
             />
-            <Button color="indigo">Simpan</Button>
+            <Button disabled={loading}>{form.id ? "Perbarui" : "Simpan"}</Button>
           </form>
         </ModalForm>
       )}
