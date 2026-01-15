@@ -71,7 +71,19 @@ export default function AbsensiPage() {
       })
 
       if (res.ok) {
-        alert('Absensi berhasil dicatat!')
+        const result = await res.json()
+        
+        let message = 'Absensi berhasil dicatat!'
+        if (result.guruPengganti && result.guruPengganti.length > 0) {
+          message += `\n\n✓ Sistem otomatis menemukan ${result.guruPengganti.length} guru pengganti:`
+          result.guruPengganti.forEach((gp: any, idx: number) => {
+            message += `\n${idx + 1}. ${gp.guruPengganti.nama} → ${gp.jadwal.kelas.nama} | ${gp.jadwal.matpel.nama} (${gp.jadwal.jamMulai}-${gp.jadwal.jamSelesai})`
+          })
+        } else if (formData.status !== 'Hadir') {
+          message += '\n\n⚠ Tidak ada guru pengganti yang tersedia (tidak ada guru dengan mata pelajaran sama yang jadwalnya kosong)'
+        }
+        
+        alert(message)
         setShowForm(false)
         setFormData({
           guruId: '',

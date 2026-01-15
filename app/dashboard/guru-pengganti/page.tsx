@@ -172,11 +172,28 @@ export default function GuruPenggantiPage() {
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Guru Pengganti</h1>
+        <div>
+          <h1 className="text-3xl font-bold">Guru Pengganti</h1>
+          <p className="text-sm text-gray-500 mt-2">
+            🤖 Sistem otomatis mencarikan guru pengganti berdasarkan mata pelajaran yang sama dan jadwal kosong
+          </p>
+        </div>
         <Button onClick={() => setShowForm(!showForm)}>
-          {showForm ? 'Tutup Form' : '+ Tentukan Guru Pengganti'}
+          {showForm ? 'Tutup Form' : '+ Tentukan Manual'}
         </Button>
       </div>
+
+      {penggantiList.length > 0 && (
+        <Card className="p-4 mb-6 bg-blue-50 border-blue-200">
+          <h3 className="font-semibold text-blue-900 mb-2">📋 Cara Kerja Sistem Otomatis:</h3>
+          <ul className="text-sm text-blue-800 space-y-1">
+            <li>• Ketika ada guru tidak masuk, sistem otomatis mencari guru pengganti</li>
+            <li>• Guru pengganti dipilih yang mengajar <strong>mata pelajaran yang sama</strong></li>
+            <li>• Hanya guru dengan <strong>jadwal kosong</strong> di jam tersebut yang dipilih</li>
+            <li>• Status awal: Menunggu → Admin dapat menerima/menolak penugasan</li>
+          </ul>
+        </Card>
+      )}
 
       {showForm && (
         <Card className="p-6 mb-6">
@@ -301,13 +318,27 @@ export default function GuruPenggantiPage() {
                       {new Date(item.tanggal).toLocaleDateString('id-ID')}
                     </td>
                     <td className="px-6 py-4">{item.guruAsli.nama}</td>
-                    <td className="px-6 py-4">{item.guruPengganti.nama}</td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <span>{item.guruPengganti.nama}</span>
+                        {item.catatan?.includes('Otomatis') && (
+                          <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs font-semibold">
+                            🤖 Otomatis
+                          </span>
+                        )}
+                      </div>
+                    </td>
                     <td className="px-6 py-4">
                       <div className="text-sm">
                         <div>{item.jadwal.kelas.nama} - {item.jadwal.matpel.nama}</div>
                         <div className="text-gray-500">
                           {item.jadwal.hari}, {item.jadwal.jamMulai}-{item.jadwal.jamSelesai}
                         </div>
+                        {item.catatan && (
+                          <div className="text-xs text-gray-400 mt-1 italic">
+                            {item.catatan}
+                          </div>
+                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4">
