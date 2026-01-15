@@ -202,20 +202,3 @@ export default function MapelPage() {
     </main>
   );
 }
-            <select
-              value={form.guruId}
-              onChange={(e) => setForm({ ...form, guruId: Number(e.target.value) })}
-              className="border p-2 w-full rounded"
-            >
-              <option value={0}>Pilih Guru</option>
-              {guru.map((g) => (
-                <option key={g.id} value={g.id}>{g.nama}</option>
-              ))}
-            </select>
-            <button className="bg-indigo-600 text-white w-full py-2 rounded">Simpan</button>
-          </form>
-        </ModalForm>
-      )}
-    </main>
-  );
-}

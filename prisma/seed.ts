@@ -38,6 +38,47 @@ async function main() {
     data: { nama: 'Lab Komputer', kapasitas: 25 }
   })
 
+  // --- SISWA ---
+  await prisma.siswa.createMany({
+    data: [
+      // Siswa Kelas VII A
+      { nama: 'Andi Wijaya', nis: '2024001', kelasId: kelasA.id },
+      { nama: 'Bella Putri', nis: '2024002', kelasId: kelasA.id },
+      { nama: 'Candra Pratama', nis: '2024003', kelasId: kelasA.id },
+      { nama: 'Dina Anggraini', nis: '2024004', kelasId: kelasA.id },
+      { nama: 'Eko Saputra', nis: '2024005', kelasId: kelasA.id },
+      { nama: 'Farah Amalia', nis: '2024006', kelasId: kelasA.id },
+      { nama: 'Galih Permana', nis: '2024007', kelasId: kelasA.id },
+      { nama: 'Hana Nurhaliza', nis: '2024008', kelasId: kelasA.id },
+      { nama: 'Irfan Maulana', nis: '2024009', kelasId: kelasA.id },
+      { nama: 'Julia Kartika', nis: '2024010', kelasId: kelasA.id },
+      
+      // Siswa Kelas VII B
+      { nama: 'Kevin Ahmad', nis: '2024011', kelasId: kelasB.id },
+      { nama: 'Luna Salsabila', nis: '2024012', kelasId: kelasB.id },
+      { nama: 'Muhammad Rizki', nis: '2024013', kelasId: kelasB.id },
+      { nama: 'Nabila Zahira', nis: '2024014', kelasId: kelasB.id },
+      { nama: 'Omar Firdaus', nis: '2024015', kelasId: kelasB.id },
+      { nama: 'Putri Maharani', nis: '2024016', kelasId: kelasB.id },
+      { nama: 'Qori Syahputra', nis: '2024017', kelasId: kelasB.id },
+      { nama: 'Rina Andriani', nis: '2024018', kelasId: kelasB.id },
+      { nama: 'Satria Bagaskara', nis: '2024019', kelasId: kelasB.id },
+      { nama: 'Tika Melati', nis: '2024020', kelasId: kelasB.id },
+      
+      // Siswa Kelas VIII A
+      { nama: 'Umar Hadi', nis: '2023001', kelasId: kelasC.id },
+      { nama: 'Vina Septiani', nis: '2023002', kelasId: kelasC.id },
+      { nama: 'Wahyu Pradana', nis: '2023003', kelasId: kelasC.id },
+      { nama: 'Xena Kusuma', nis: '2023004', kelasId: kelasC.id },
+      { nama: 'Yoga Aditya', nis: '2023005', kelasId: kelasC.id },
+      { nama: 'Zahra Cantika', nis: '2023006', kelasId: kelasC.id },
+      { nama: 'Arya Wardana', nis: '2023007', kelasId: kelasC.id },
+      { nama: 'Bunga Lestari', nis: '2023008', kelasId: kelasC.id },
+      { nama: 'Cahya Ramadhan', nis: '2023009', kelasId: kelasC.id },
+      { nama: 'Dewi Safitri', nis: '2023010', kelasId: kelasC.id },
+    ]
+  })
+
   // --- MATA PELAJARAN ---
   const m1 = await prisma.matpel.create({
     data: { nama: 'Matematika', jamPerMinggu: 4, guruId: guru1.id }

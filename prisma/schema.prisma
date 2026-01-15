@@ -30,6 +30,15 @@ model Kelas {
   nama     String
   tingkat  Int
   jadwal   Jadwal[]
+  siswa    Siswa[]
+}
+
+model Siswa {
+  id      Int    @id @default(autoincrement())
+  nama    String
+  nis     String @unique
+  kelasId Int
+  kelas   Kelas  @relation(fields: [kelasId], references: [id])
 }
 
 model Ruangan {
