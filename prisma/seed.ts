@@ -15,6 +15,35 @@ async function main() {
   const guru3 = await prisma.guru.create({
     data: { nama: 'Ahmad Fauzi', nip: '19900605202303' }
   })
+  const guru4 = await prisma.guru.create({
+    data: { nama: 'Rina Kusuma', nip: '19850920202304' }
+  })
+  const guru5 = await prisma.guru.create({
+    data: { nama: 'Dedi Supriadi', nip: '19920715202305' }
+  })
+  const guru6 = await prisma.guru.create({
+    data: { nama: 'Wati Suryani', nip: '19880308202306' }
+  })
+  const guru7 = await prisma.guru.create({
+    data: { nama: 'Rizal Pratama', nip: '19910525202307' }
+  })
+  const guru8 = await prisma.guru.create({
+    data: { nama: 'Lina Marlina', nip: '19930618202308' }
+  })
+  const guru9 = await prisma.guru.create({
+    data: { nama: 'Hadi Wijaya', nip: '19860401202309' }
+  })
+  const guru10 = await prisma.guru.create({
+    data: { nama: 'Maya Sari', nip: '19940822202310' }
+  })
+  const guru11 = await prisma.guru.create({
+    data: { nama: 'Agus Setiawan', nip: '19891109202311' }
+  })
+  const guru12 = await prisma.guru.create({
+    data: { nama: 'Fitri Handayani', nip: '19920214202312' }
+  })
+
+  console.log('✓ 12 Guru berhasil dibuat')
 
   // --- KELAS ---
   const kelasA = await prisma.kelas.create({
@@ -27,6 +56,8 @@ async function main() {
     data: { nama: 'VIII A', tingkat: 8 }
   })
 
+  console.log('✓ 3 Kelas berhasil dibuat')
+
   // --- RUANGAN ---
   const r1 = await prisma.ruangan.create({
     data: { nama: 'Ruang 101', kapasitas: 30 }
@@ -37,6 +68,8 @@ async function main() {
   const r3 = await prisma.ruangan.create({
     data: { nama: 'Lab Komputer', kapasitas: 25 }
   })
+
+  console.log('✓ 3 Ruangan berhasil dibuat')
 
   // --- SISWA ---
   await prisma.siswa.createMany({
@@ -79,62 +112,113 @@ async function main() {
     ]
   })
 
+  console.log('✓ 30 Siswa berhasil dibuat')
+
   // --- MATA PELAJARAN ---
+  // Matematika - 3 guru
   const m1 = await prisma.matpel.create({
     data: { nama: 'Matematika', jamPerMinggu: 4, guruId: guru1.id }
   })
   const m2 = await prisma.matpel.create({
-    data: { nama: 'Bahasa Indonesia', jamPerMinggu: 3, guruId: guru2.id }
+    data: { nama: 'Matematika', jamPerMinggu: 4, guruId: guru4.id }
   })
   const m3 = await prisma.matpel.create({
+    data: { nama: 'Matematika', jamPerMinggu: 4, guruId: guru7.id }
+  })
+  
+  // Bahasa Indonesia - 3 guru
+  const m4 = await prisma.matpel.create({
+    data: { nama: 'Bahasa Indonesia', jamPerMinggu: 3, guruId: guru2.id }
+  })
+  const m5 = await prisma.matpel.create({
+    data: { nama: 'Bahasa Indonesia', jamPerMinggu: 3, guruId: guru5.id }
+  })
+  const m6 = await prisma.matpel.create({
+    data: { nama: 'Bahasa Indonesia', jamPerMinggu: 3, guruId: guru8.id }
+  })
+  
+  // IPA - 3 guru
+  const m7 = await prisma.matpel.create({
     data: { nama: 'IPA', jamPerMinggu: 4, guruId: guru3.id }
   })
-  const m4 = await prisma.matpel.create({
-    data: { nama: 'IPS', jamPerMinggu: 2, guruId: guru2.id }
+  const m8 = await prisma.matpel.create({
+    data: { nama: 'IPA', jamPerMinggu: 4, guruId: guru6.id }
+  })
+  const m9 = await prisma.matpel.create({
+    data: { nama: 'IPA', jamPerMinggu: 4, guruId: guru9.id }
+  })
+  
+  // IPS - 2 guru
+  const m10 = await prisma.matpel.create({
+    data: { nama: 'IPS', jamPerMinggu: 2, guruId: guru10.id }
+  })
+  const m11 = await prisma.matpel.create({
+    data: { nama: 'IPS', jamPerMinggu: 2, guruId: guru11.id }
+  })
+  
+  // Bahasa Inggris - 2 guru
+  const m12 = await prisma.matpel.create({
+    data: { nama: 'Bahasa Inggris', jamPerMinggu: 3, guruId: guru12.id }
+  })
+  const m13 = await prisma.matpel.create({
+    data: { nama: 'Bahasa Inggris', jamPerMinggu: 3, guruId: guru5.id }
   })
 
-  // --- PREFERENSI GURU (opsional) ---
+  console.log('✓ 13 Mata Pelajaran berhasil dibuat')
+
+  // --- PREFERENSI GURU ---
   await prisma.preferensi.createMany({
     data: [
       { guruId: guru1.id, hariSuka: 'Senin', jamSuka: '07:00-09:00' },
       { guruId: guru2.id, hariSuka: 'Rabu', jamSuka: '09:00-11:00' },
-      { guruId: guru3.id, hariSuka: 'Kamis', jamSuka: '10:00-12:00' }
+      { guruId: guru3.id, hariSuka: 'Kamis', jamSuka: '10:00-12:00' },
+      { guruId: guru4.id, hariSuka: 'Selasa', jamSuka: '08:00-10:00' },
+      { guruId: guru5.id, hariSuka: 'Jumat', jamSuka: '07:00-09:00' },
+      { guruId: guru6.id, hariSuka: 'Senin', jamSuka: '10:00-12:00' },
+      { guruId: guru7.id, hariSuka: 'Rabu', jamSuka: '07:00-09:00' },
+      { guruId: guru8.id, hariSuka: 'Kamis', jamSuka: '09:00-11:00' },
+      { guruId: guru9.id, hariSuka: 'Selasa', jamSuka: '10:00-12:00' },
+      { guruId: guru10.id, hariSuka: 'Jumat', jamSuka: '08:00-10:00' },
+      { guruId: guru11.id, hariSuka: 'Senin', jamSuka: '09:00-11:00' },
+      { guruId: guru12.id, hariSuka: 'Rabu', jamSuka: '08:00-10:00' }
     ]
   })
 
-  // --- JADWAL DUMMY ---
+  console.log('✓ 12 Preferensi Guru berhasil dibuat')
+
+  // --- JADWAL ---
   await prisma.jadwal.createMany({
     data: [
-      {
-        kelasId: kelasA.id,
-        matpelId: m1.id,
-        guruId: guru1.id,
-        ruanganId: r1.id,
-        hari: 'Senin',
-        jamMulai: '07:00',
-        jamSelesai: '09:00'
-      },
-      {
-        kelasId: kelasB.id,
-        matpelId: m2.id,
-        guruId: guru2.id,
-        ruanganId: r2.id,
-        hari: 'Selasa',
-        jamMulai: '09:00',
-        jamSelesai: '11:00'
-      },
-      {
-        kelasId: kelasC.id,
-        matpelId: m3.id,
-        guruId: guru3.id,
-        ruanganId: r3.id,
-        hari: 'Rabu',
-        jamMulai: '10:00',
-        jamSelesai: '12:00'
-      }
+      // Senin
+      { kelasId: kelasA.id, matpelId: m1.id, guruId: guru1.id, ruanganId: r1.id, hari: 'Senin', jamMulai: '07:00', jamSelesai: '08:30' },
+      { kelasId: kelasB.id, matpelId: m2.id, guruId: guru4.id, ruanganId: r2.id, hari: 'Senin', jamMulai: '07:00', jamSelesai: '08:30' },
+      { kelasId: kelasC.id, matpelId: m7.id, guruId: guru3.id, ruanganId: r3.id, hari: 'Senin', jamMulai: '09:00', jamSelesai: '10:30' },
+      { kelasId: kelasA.id, matpelId: m4.id, guruId: guru2.id, ruanganId: r1.id, hari: 'Senin', jamMulai: '10:30', jamSelesai: '12:00' },
+      
+      // Selasa
+      { kelasId: kelasB.id, matpelId: m4.id, guruId: guru2.id, ruanganId: r2.id, hari: 'Selasa', jamMulai: '07:00', jamSelesai: '08:30' },
+      { kelasId: kelasA.id, matpelId: m7.id, guruId: guru3.id, ruanganId: r1.id, hari: 'Selasa', jamMulai: '09:00', jamSelesai: '10:30' },
+      { kelasId: kelasC.id, matpelId: m1.id, guruId: guru1.id, ruanganId: r3.id, hari: 'Selasa', jamMulai: '10:30', jamSelesai: '12:00' },
+      { kelasId: kelasB.id, matpelId: m10.id, guruId: guru10.id, ruanganId: r2.id, hari: 'Selasa', jamMulai: '13:00', jamSelesai: '14:30' },
+      
+      // Rabu
+      { kelasId: kelasC.id, matpelId: m2.id, guruId: guru4.id, ruanganId: r3.id, hari: 'Rabu', jamMulai: '07:00', jamSelesai: '08:30' },
+      { kelasId: kelasA.id, matpelId: m12.id, guruId: guru12.id, ruanganId: r1.id, hari: 'Rabu', jamMulai: '09:00', jamSelesai: '10:30' },
+      { kelasId: kelasB.id, matpelId: m7.id, guruId: guru3.id, ruanganId: r2.id, hari: 'Rabu', jamMulai: '10:30', jamSelesai: '12:00' },
+      
+      // Kamis
+      { kelasId: kelasA.id, matpelId: m8.id, guruId: guru6.id, ruanganId: r1.id, hari: 'Kamis', jamMulai: '07:00', jamSelesai: '08:30' },
+      { kelasId: kelasC.id, matpelId: m4.id, guruId: guru2.id, ruanganId: r3.id, hari: 'Kamis', jamMulai: '09:00', jamSelesai: '10:30' },
+      { kelasId: kelasB.id, matpelId: m1.id, guruId: guru1.id, ruanganId: r2.id, hari: 'Kamis', jamMulai: '10:30', jamSelesai: '12:00' },
+      
+      // Jumat
+      { kelasId: kelasB.id, matpelId: m12.id, guruId: guru12.id, ruanganId: r2.id, hari: 'Jumat', jamMulai: '07:00', jamSelesai: '08:30' },
+      { kelasId: kelasC.id, matpelId: m10.id, guruId: guru10.id, ruanganId: r3.id, hari: 'Jumat', jamMulai: '09:00', jamSelesai: '10:30' },
+      { kelasId: kelasA.id, matpelId: m1.id, guruId: guru1.id, ruanganId: r1.id, hari: 'Jumat', jamMulai: '10:30', jamSelesai: '12:00' }
     ]
   })
 
+  console.log('✓ 17 Jadwal berhasil dibuat')
   console.log('✅ Seeding selesai!')
 }
 
