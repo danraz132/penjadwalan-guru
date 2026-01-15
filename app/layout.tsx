@@ -1,7 +1,7 @@
 // /app/layout.tsx
 import "./globals.css";
 import Link from "next/link";
-import { BarChart3, Calendar, Home, Users, Book, Building, GraduationCap } from "lucide-react";
+import { BarChart3, Calendar, Home, Users, Book, Building, GraduationCap, UserCheck, UserCog } from "lucide-react";
 
 export const metadata = {
   title: "Aplikasi Penjadwalan Guru",
@@ -61,6 +61,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 className="flex items-center gap-3 hover:bg-indigo-700 p-3 rounded-lg transition"
               >
                 <Building size={20} /> Ruangan
+              </Link>
+              <Link 
+                href="/dashboard/absensi" 
+                className="flex items-center gap-3 hover:bg-indigo-700 p-3 rounded-lg transition"
+              >
+                <UserCheck size={20} /> Absensi Guru
+              </Link>
+              <Link 
+                href="/dashboard/guru-pengganti" 
+                className="flex items-center gap-3 hover:bg-indigo-700 p-3 rounded-lg transition"
+              >
+                <UserCog size={20} /> Guru Pengganti
               </Link>
             </nav>
             

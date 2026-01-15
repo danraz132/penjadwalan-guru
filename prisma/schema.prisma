@@ -14,6 +14,9 @@ model Guru {
   mataPelajar Matpel[]
   jadwal      Jadwal[]
   preferensi  Preferensi?
+  absensi     AbsensiGuru[]
+  guruPengganti GuruPengganti[] @relation("GuruAsli")
+  menggantikan  GuruPengganti[] @relation("GuruPengganti")
 }
 
 model Matpel {
@@ -62,6 +65,7 @@ model Jadwal {
   matpel   Matpel   @relation(fields: [matpelId], references: [id])
   guru     Guru     @relation(fields: [guruId], references: [id])
   ruangan  Ruangan  @relation(fields: [ruanganId], references: [id])
+  penggantian GuruPengganti[]
 }
 
 model Preferensi {
@@ -71,4 +75,33 @@ model Preferensi {
   jamSuka   String?
   jamTidak  String?
   guru      Guru   @relation(fields: [guruId], references: [id])
+}
+
+model AbsensiGuru {
+  id          Int      @id @default(autoincrement())
+  guruId      Int
+  tanggal     DateTime
+  status      String   // "Hadir", "Sakit", "Izin", "Alpa"
+  keterangan  String?
+  createdAt   DateTime @default(now())
+  
+  guru        Guru     @relation(fields: [guruId], references: [id])
+  penggantiSchedule GuruPengganti[]
+}
+
+model GuruPengganti {
+  id              Int      @id @default(autoincrement())
+  absensiId       Int
+  jadwalId        Int
+  guruAsliId      Int
+  guruPenggantiId Int
+  tanggal         DateTime
+  status          String   // "Menunggu", "Diterima", "Ditolak", "Selesai"
+  catatan         String?
+  createdAt       DateTime @default(now())
+  
+  absensi         AbsensiGuru @relation(fields: [absensiId], references: [id])
+  jadwal          Jadwal   @relation(fields: [jadwalId], references: [id])
+  guruAsli        Guru     @relation("GuruAsli", fields: [guruAsliId], references: [id])
+  guruPengganti   Guru     @relation("GuruPengganti", fields: [guruPenggantiId], references: [id])
 }
