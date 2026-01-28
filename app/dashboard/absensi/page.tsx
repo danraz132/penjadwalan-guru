@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import Link from 'next/link'
+import { FileText } from 'lucide-react'
 
 interface Guru {
   id: number
@@ -133,9 +135,17 @@ export default function AbsensiPage() {
     <div className="p-6 max-w-7xl mx-auto">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Absensi Guru</h1>
-        <Button onClick={() => setShowForm(!showForm)}>
-          {showForm ? 'Tutup Form' : '+ Catat Absensi'}
-        </Button>
+        <div className="flex gap-3">
+          <Link href="/dashboard/absensi/laporan">
+            <Button variant="outline" className="flex items-center gap-2">
+              <FileText size={18} />
+              Laporan Bulanan
+            </Button>
+          </Link>
+          <Button onClick={() => setShowForm(!showForm)}>
+            {showForm ? 'Tutup Form' : '+ Catat Absensi'}
+          </Button>
+        </div>
       </div>
 
       <div className="mb-6">

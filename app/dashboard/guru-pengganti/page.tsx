@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import Link from 'next/link'
+import { FileText } from 'lucide-react'
 
 interface Guru {
   id: number
@@ -178,9 +180,17 @@ export default function GuruPenggantiPage() {
             🤖 Sistem otomatis mencarikan guru pengganti berdasarkan mata pelajaran yang sama dan jadwal kosong
           </p>
         </div>
-        <Button onClick={() => setShowForm(!showForm)}>
-          {showForm ? 'Tutup Form' : '+ Tentukan Manual'}
-        </Button>
+        <div className="flex gap-3">
+          <Link href="/dashboard/guru-pengganti/laporan">
+            <Button variant="outline" className="flex items-center gap-2">
+              <FileText size={18} />
+              Laporan Bulanan
+            </Button>
+          </Link>
+          <Button onClick={() => setShowForm(!showForm)}>
+            {showForm ? 'Tutup Form' : '+ Tentukan Manual'}
+          </Button>
+        </div>
       </div>
 
       {penggantiList.length > 0 && (

@@ -17,6 +17,7 @@ model Guru {
   absensi     AbsensiGuru[]
   guruPengganti GuruPengganti[] @relation("GuruAsli")
   menggantikan  GuruPengganti[] @relation("GuruPengganti")
+  user        User?
 }
 
 model Matpel {
@@ -42,6 +43,7 @@ model Siswa {
   nis     String @unique
   kelasId Int
   kelas   Kelas  @relation(fields: [kelasId], references: [id])
+  user    User?
 }
 
 model Ruangan {
@@ -104,4 +106,24 @@ model GuruPengganti {
   jadwal          Jadwal   @relation(fields: [jadwalId], references: [id])
   guruAsli        Guru     @relation("GuruAsli", fields: [guruAsliId], references: [id])
   guruPengganti   Guru     @relation("GuruPengganti", fields: [guruPenggantiId], references: [id])
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique
+  password  String   // Hashed password
+  role      Role     @default(GURU)
+  guruId    Int?     @unique
+  siswaId   Int?     @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  guru      Guru?    @relation(fields: [guruId], references: [id])
+  siswa     Siswa?   @relation(fields: [siswaId], references: [id])
+}
+
+enum Role {
+  ADMIN
+  GURU
+  SISWA
 }
