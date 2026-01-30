@@ -1,9 +1,10 @@
 "use client";
-import { useState, useEffect } from "react";
-import { Pencil, Trash2, PlusCircle } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Pencil, Trash2, PlusCircle, Upload, Download } from "lucide-react";
 import ModalForm from "@/components/ModalForm";
 import TableCard from "@/components/TableCard";
 import { Button } from "@/components/Button";
+import Papa from "papaparse";
 
 export default function SiswaPage() {
   const [siswa, setSiswa] = useState<any[]>([]);
@@ -13,6 +14,8 @@ export default function SiswaPage() {
   const [search, setSearch] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function fetchSiswa() {
     try {
@@ -88,6 +91,81 @@ export default function SiswaPage() {
     }
   }
 
+  function downloadTemplateCSV() {
+    const csvContent = "nama,nis,kelas\nJohn Doe,12345,X IPA 1\nJane Smith,12346,X IPA 2";
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", "template_siswa.csv");
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  async function handleFileUpload(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setLoading(true);
+    setMessage("");
+
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: async (results) => {
+        try {
+          const response = await fetch("/api/siswa/upload-csv", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ data: results.data }),
+          });
+
+          const result = await response.json();
+
+          if (!response.ok) {
+            let errorMessage = result.error || "Gagal mengupload CSV";
+            if (result.details && Array.isArray(result.details)) {
+              errorMessage += ":\n" + result.details.slice(0, 5).join("\n");
+              if (result.details.length > 5) {
+                errorMessage += `\n... dan ${result.details.length - 5} error lainnya`;
+              }
+            }
+            throw new Error(errorMessage);
+          }
+
+          let successMessage = `✅ ${result.message}`;
+          
+          if (result.validationErrors && result.validationErrors.length > 0) {
+            successMessage += `\n⚠️ ${result.validationErrors.length} baris gagal validasi`;
+          }
+          
+          if (result.insertErrors && result.insertErrors.length > 0) {
+            successMessage += `\n⚠️ ${result.insertErrors.length} gagal disimpan`;
+          }
+
+          setMessage(successMessage);
+          setUploadModalOpen(false);
+          fetchSiswa();
+          
+          // Reset file input
+          if (fileInputRef.current) {
+            fileInputRef.current.value = "";
+          }
+        } catch (error) {
+          setMessage("❌ " + (error as Error).message);
+        } finally {
+          setLoading(false);
+        }
+      },
+      error: (error) => {
+        setMessage("❌ Error parsing CSV: " + error.message);
+        setLoading(false);
+      },
+    });
+  }
+
   const filteredSiswa = siswa.filter((s) =>
     s.nama.toLowerCase().includes(search.toLowerCase()) ||
     s.nis.toLowerCase().includes(search.toLowerCase()) ||
@@ -98,13 +176,21 @@ export default function SiswaPage() {
     <main className="space-y-6">
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-3xl font-bold text-gray-800">👨‍🎓 Data Siswa</h1>
-        <Button onClick={() => { setForm({ id: 0, nama: "", nis: "", kelasId: "" }); setOpen(true); }}>
-          <PlusCircle size={18} /> Tambah Siswa
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            onClick={() => setUploadModalOpen(true)}
+            className="bg-green-600 hover:bg-green-700"
+          >
+            <Upload size={18} /> Upload CSV
+          </Button>
+          <Button onClick={() => { setForm({ id: 0, nama: "", nis: "", kelasId: "" }); setOpen(true); }}>
+            <PlusCircle size={18} /> Tambah Siswa
+          </Button>
+        </div>
       </div>
 
       {message && (
-        <div className={`p-3 rounded ${message.startsWith("❌") ? "bg-red-100 text-red-800" : "bg-green-100 text-green-800"}`}>
+        <div className={`p-3 rounded whitespace-pre-line ${message.startsWith("❌") ? "bg-red-100 text-red-800" : "bg-green-100 text-green-800"}`}>
           {message}
         </div>
       )}
@@ -192,6 +278,51 @@ export default function SiswaPage() {
             </select>
             <Button disabled={loading}>{form.id ? "Perbarui" : "Simpan"}</Button>
           </form>
+        </ModalForm>
+      )}
+
+      {uploadModalOpen && (
+        <ModalForm open={uploadModalOpen} onClose={() => setUploadModalOpen(false)} title="Upload CSV Siswa">
+          <div className="space-y-4">
+            <div className="bg-blue-50 border border-blue-200 rounded p-4">
+              <h3 className="font-semibold text-blue-900 mb-2">📋 Format CSV:</h3>
+              <ul className="text-sm text-blue-800 space-y-1">
+                <li>• <strong>nama</strong>: Nama lengkap siswa</li>
+                <li>• <strong>nis</strong>: Nomor Induk Siswa (harus unik)</li>
+                <li>• <strong>kelas</strong>: Nama kelas (contoh: X IPA 1)</li>
+              </ul>
+              <div className="mt-3">
+                <button
+                  type="button"
+                  onClick={downloadTemplateCSV}
+                  className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center gap-1"
+                >
+                  <Download size={16} /> Download Template CSV
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Pilih File CSV
+              </label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv"
+                onChange={handleFileUpload}
+                disabled={loading}
+                className="block w-full text-sm text-gray-900 border border-gray-300 rounded cursor-pointer bg-gray-50 focus:outline-none p-2"
+              />
+            </div>
+
+            {loading && (
+              <div className="text-center py-4">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                <p className="mt-2 text-sm text-gray-600">Memproses file...</p>
+              </div>
+            )}
+          </div>
         </ModalForm>
       )}
     </main>
