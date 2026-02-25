@@ -49,10 +49,10 @@ export default function DashboardPage() {
   }, []);
 
   return (
-    <main className="p-6">
-      <h1 className="text-4xl font-bold mb-8">📊 Dashboard</h1>
+    <main className="p-4 md:p-6">
+      <h1 className="text-2xl md:text-4xl font-bold mb-6 md:mb-8">📊 Dashboard</h1>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
         {/* Statistik Cards */}
         <div className="bg-blue-500 text-white p-6 rounded-lg shadow-lg">
           <div className="text-3xl font-bold">{stats.totalGuru}</div>
@@ -86,9 +86,9 @@ export default function DashboardPage() {
       </div>
 
       {/* Summary Section */}
-      <div className="bg-white rounded-lg shadow p-6 mb-8">
+      <div className="bg-white rounded-lg shadow p-4 md:p-6 mb-8">
         <h2 className="text-2xl font-bold mb-4">📈 Ringkasan Sistem</h2>
-        <div className="grid grid-cols-2 gap-4 text-gray-700">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-gray-700">
           <div className="border-l-4 border-blue-500 pl-4 py-2">
             <p className="text-sm text-gray-500">Total Master Data</p>
             <p className="text-2xl font-bold">{stats.totalGuru + stats.totalKelas + stats.totalMapel + stats.totalRuangan}</p>
@@ -107,7 +107,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Quick Actions */}
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="bg-white rounded-lg shadow p-4 md:p-6">
         <h2 className="text-2xl font-bold mb-4">⚡ Aksi Cepat</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-gray-600 text-sm">
           <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">

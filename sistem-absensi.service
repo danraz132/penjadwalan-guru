@@ -1,0 +1,28 @@
+[Unit]
+Description=Sistem Absensi Next.js Application
+After=network.target mysql.service
+Wants=mysql.service
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/var/www/Sistem-absensi
+Environment="NODE_ENV=production"
+Environment="PORT=3001"
+ExecStart=/usr/bin/npm start -- -p 3001
+
+# Security settings
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=sistem-absensi
+
+# Additional security hardening
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/www/Sistem-absensi
+
+[Install]
+WantedBy=multi-user.target

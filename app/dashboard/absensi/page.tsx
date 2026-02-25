@@ -4,6 +4,14 @@ import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import Link from 'next/link'
 import { FileText } from 'lucide-react'
 
@@ -28,6 +36,13 @@ export default function AbsensiPage() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
+  const [deleteModal, setDeleteModal] = useState({
+    open: false,
+    id: 0,
+    guruNama: '',
+    tanggal: '',
+  })
+  const [deleting, setDeleting] = useState(false)
   
   const [formData, setFormData] = useState({
     guruId: '',
@@ -104,18 +119,44 @@ export default function AbsensiPage() {
     }
   }
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('Yakin ingin menghapus absensi ini?')) return
+  const openDeleteModal = (absensi: Absensi) => {
+    setDeleteModal({
+      open: true,
+      id: absensi.id,
+      guruNama: absensi.guru.nama,
+      tanggal: new Date(absensi.tanggal).toLocaleDateString('id-ID'),
+    })
+  }
+
+  const closeDeleteModal = () => {
+    if (deleting) return
+    setDeleteModal({
+      open: false,
+      id: 0,
+      guruNama: '',
+      tanggal: '',
+    })
+  }
+
+  const handleDelete = async () => {
+    if (!deleteModal.id) return
 
     try {
-      const res = await fetch(`/api/absensi?id=${id}`, { method: 'DELETE' })
+      setDeleting(true)
+      const res = await fetch(`/api/absensi?id=${deleteModal.id}`, { method: 'DELETE' })
       if (res.ok) {
         alert('Absensi berhasil dihapus')
+        closeDeleteModal()
         fetchAbsensi()
+      } else {
+        const error = await res.json()
+        alert(error.error || 'Gagal menghapus absensi')
       }
     } catch (error) {
       console.error('Error:', error)
       alert('Gagal menghapus absensi')
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -275,7 +316,7 @@ export default function AbsensiPage() {
                         <Button
                           size="sm"
                           variant="destructive"
-                          onClick={() => handleDelete(absensi.id)}
+                          onClick={() => openDeleteModal(absensi)}
                         >
                           Hapus
                         </Button>
@@ -288,6 +329,26 @@ export default function AbsensiPage() {
           </table>
         </div>
       </Card>
+
+      <Dialog open={deleteModal.open} onOpenChange={(open) => !open && closeDeleteModal()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Konfirmasi Hapus Absensi Guru</DialogTitle>
+            <DialogDescription>
+              Anda akan menghapus absensi guru <strong>{deleteModal.guruNama || '-'}</strong> pada tanggal{' '}
+              <strong>{deleteModal.tanggal || '-'}</strong>. Lanjutkan?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={closeDeleteModal} disabled={deleting}>
+              Batal
+            </Button>
+            <Button type="button" variant="destructive" onClick={handleDelete} disabled={deleting}>
+              {deleting ? 'Memproses...' : 'Hapus'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

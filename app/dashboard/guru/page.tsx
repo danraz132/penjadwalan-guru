@@ -14,6 +14,11 @@ export default function GuruPage() {
   const [mapelGuru, setMapelGuru] = useState<any[]>([]);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [deleteModal, setDeleteModal] = useState({
+    open: false,
+    guruId: 0,
+    guruNama: "",
+  });
 
   async function fetchGuru() {
     try {
@@ -34,10 +39,16 @@ export default function GuruPage() {
     setLoading(true);
     setMessage("");
     try {
+      const method = form.id > 0 ? "PUT" : "POST";
+      const payload =
+        method === "PUT"
+          ? { id: Number(form.id), nama: form.nama, nip: form.nip }
+          : { nama: form.nama, nip: form.nip };
+
       const response = await fetch("/api/guru", {
-        method: form.id ? "PUT" : "POST",
+        method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
@@ -45,7 +56,7 @@ export default function GuruPage() {
         throw new Error(errorData.error || "Gagal menyimpan guru");
       }
 
-      setMessage(form.id ? "✅ Guru berhasil diperbarui" : "✅ Guru berhasil ditambahkan");
+      setMessage(form.id > 0 ? "✅ Guru berhasil diperbarui" : "✅ Guru berhasil ditambahkan");
       setOpen(false);
       setForm({ id: 0, nama: "", nip: "" });
       fetchGuru();
@@ -56,13 +67,23 @@ export default function GuruPage() {
     }
   }
 
-  async function deleteGuru(id: number) {
-    if (!confirm("Apakah Anda yakin ingin menghapus guru ini?")) return;
-    
+  function openDeleteModal(guruItem: any) {
+    setDeleteModal({
+      open: true,
+      guruId: Number(guruItem.id),
+      guruNama: String(guruItem.nama || ""),
+    });
+  }
+
+  function closeDeleteModal() {
+    setDeleteModal({ open: false, guruId: 0, guruNama: "" });
+  }
+
+  async function submitDeleteGuru() {
     setLoading(true);
     setMessage("");
     try {
-      const response = await fetch(`/api/guru?id=${id}`, { method: "DELETE" });
+      const response = await fetch(`/api/guru?id=${deleteModal.guruId}`, { method: "DELETE" });
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -70,12 +91,23 @@ export default function GuruPage() {
       }
 
       setMessage("✅ Guru berhasil dihapus");
+      closeDeleteModal();
       fetchGuru();
     } catch (error) {
       setMessage("❌ Error: " + (error as Error).message);
     } finally {
       setLoading(false);
     }
+  }
+
+  function deleteGuru(id: number) {
+    const selectedGuru = guru.find((item) => Number(item.id) === Number(id));
+    if (!selectedGuru) {
+      setMessage("❌ Error: Data guru tidak ditemukan.");
+      return;
+    }
+
+    openDeleteModal(selectedGuru);
   }
 
   const filteredGuru = guru.filter((g) =>
@@ -98,7 +130,7 @@ export default function GuruPage() {
     <main className="space-y-6">
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-3xl font-bold text-gray-800">👩‍🏫 Data Guru</h1>
-        <Button onClick={() => { setForm({ id: 0, nama: "", nip: "" }); setOpen(true); }}>
+        <Button onClick={() => { setForm({ id: 0, nama: "", nip: "" }); setMessage(""); setOpen(true); }}>
           <PlusCircle size={18} /> Tambah Guru
         </Button>
       </div>
@@ -122,20 +154,48 @@ export default function GuruPage() {
       <TableCard
         title="Daftar Guru"
         columns={["Nama", "NIP"]}
-        data={filteredGuru.map((g) => ({ Nama: g.nama, NIP: g.nip }))}
-        actions={(g: any) => (
+        data={filteredGuru.map((g) => ({ Nama: g.nama, NIP: g.nip, _rawData: g }))}
+        actions={(row: any) => (
           <div className="flex justify-center gap-3">
             <button 
-              onClick={() => viewMapel(g)} 
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                viewMapel(row._rawData);
+              }} 
               className="text-green-600 hover:scale-110 transition"
               title="Lihat Mapel"
+              type="button"
             >
               📚
             </button>
-            <button onClick={() => { setForm(g); setOpen(true); }} className="text-blue-600 hover:scale-110 transition">
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const guruData = row._rawData;
+                setForm({
+                  id: Number(guruData.id),
+                  nama: String(guruData.nama),
+                  nip: String(guruData.nip),
+                });
+                setOpen(true);
+              }}
+              className="text-blue-600 hover:scale-110 transition"
+              type="button"
+            >
               <Pencil size={18} />
             </button>
-            <button onClick={() => deleteGuru(g.id)} className="text-red-600 hover:scale-110 transition" disabled={loading}>
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                deleteGuru(row._rawData.id);
+              }}
+              className="text-red-600 hover:scale-110 transition"
+              disabled={loading}
+              type="button"
+            >
               <Trash2 size={18} />
             </button>
           </div>
@@ -159,8 +219,46 @@ export default function GuruPage() {
               required
               className="border p-2 w-full rounded focus:ring focus:ring-indigo-200"
             />
-            <Button disabled={loading}>{form.id ? "Perbarui" : "Simpan"}</Button>
+            <Button disabled={loading}>{form.id > 0 ? "Perbarui" : "Simpan"}</Button>
           </form>
+        </ModalForm>
+      )}
+
+      {deleteModal.open && (
+        <ModalForm
+          open={deleteModal.open}
+          onClose={() => {
+            if (!loading) closeDeleteModal();
+          }}
+          title="Konfirmasi Hapus Guru"
+        >
+          <div className="space-y-4">
+            <div className="p-3 rounded bg-red-50 border border-red-200 text-red-800 text-sm">
+              Anda akan menghapus guru <b>{deleteModal.guruNama || "ini"}</b>. Lanjutkan?
+            </div>
+            <p className="text-sm text-gray-600">
+              Data guru yang dihapus tidak dapat dikembalikan.
+            </p>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={closeDeleteModal}
+                disabled={loading}
+                className="px-4 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={submitDeleteGuru}
+                disabled={loading}
+                className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                {loading ? "Memproses..." : "Hapus Guru"}
+              </button>
+            </div>
+          </div>
         </ModalForm>
       )}
 

@@ -32,9 +32,9 @@ export default function TableCard({ title, columns, data, actions }: any) {
                     i % 2 === 0 ? "bg-white" : "bg-gray-50"
                   }`}
                 >
-                  {Object.values(row).map((v: any, j: number) => (
+                  {columns.map((col: string, j: number) => (
                     <td key={j} className="px-4 py-2 border-b border-gray-100">
-                      {v}
+                      {row[col]}
                     </td>
                   ))}
                   {actions && (

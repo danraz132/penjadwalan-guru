@@ -58,7 +58,13 @@ export async function POST(request: Request) {
       nama: user.guru?.nama || user.siswa?.nama || username,
     };
 
-    await createSession(sessionUser);
+    const forwardedProto = request.headers.get('x-forwarded-proto')
+      ?.split(',')[0]
+      .trim()
+      .toLowerCase();
+    const isHttps = forwardedProto === 'https';
+
+    await createSession(sessionUser, isHttps);
 
     return NextResponse.json({
       success: true,

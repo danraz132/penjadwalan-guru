@@ -3,14 +3,58 @@ import { NextResponse } from "next/server";
 
 const prisma = new PrismaClient();
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    const data = await prisma.siswa.findMany({
-      include: {
-        kelas: true,
+    const { searchParams } = new URL(req.url);
+    const search = (searchParams.get("search") || "").trim();
+    const kelasIdParam = searchParams.get("kelasId") || "";
+    const page = Math.max(Number(searchParams.get("page") || 1), 1);
+    const limit = Math.min(Math.max(Number(searchParams.get("limit") || 10), 1), 100);
+    const skip = (page - 1) * limit;
+
+    const where: any = {};
+
+    if (search) {
+      where.OR = [
+        { nama: { contains: search } },
+        { nis: { contains: search } },
+        { kelas: { nama: { contains: search } } },
+      ];
+    }
+
+    if (kelasIdParam) {
+      const parsedKelasId = Number(kelasIdParam);
+      if (parsedKelasId > 0) {
+        where.kelasId = parsedKelasId;
+      }
+    }
+
+    const [data, total] = await Promise.all([
+      prisma.siswa.findMany({
+        where,
+        include: {
+          kelas: true,
+        },
+        orderBy: {
+          id: "desc",
+        },
+        skip,
+        take: limit,
+      }),
+      prisma.siswa.count({ where }),
+    ]);
+
+    const totalPages = Math.max(Math.ceil(total / limit), 1);
+
+    return NextResponse.json({
+      data,
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages,
       },
     });
-    return NextResponse.json(data);
   } catch (error) {
     console.error("GET /api/siswa error:", error);
     return NextResponse.json(

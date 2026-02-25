@@ -4,6 +4,14 @@ import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import Link from 'next/link'
 import { FileText } from 'lucide-react'
 
@@ -39,6 +47,27 @@ export default function GuruPenggantiPage() {
   const [jadwalList, setJadwalList] = useState<Jadwal[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
+  const [deleteModal, setDeleteModal] = useState({
+    open: false,
+    id: 0,
+    guruAsliNama: '',
+    guruPenggantiNama: '',
+  })
+  const [deleting, setDeleting] = useState(false)
+  const [statusModal, setStatusModal] = useState<{
+    open: boolean
+    id: number
+    status: '' | 'Diterima' | 'Ditolak'
+    guruAsliNama: string
+    guruPenggantiNama: string
+  }>({
+    open: false,
+    id: 0,
+    status: '',
+    guruAsliNama: '',
+    guruPenggantiNama: '',
+  })
+  const [updatingStatus, setUpdatingStatus] = useState(false)
   
   const [formData, setFormData] = useState({
     absensiId: '',
@@ -126,6 +155,27 @@ export default function GuruPenggantiPage() {
     }
   }
 
+  const openStatusModal = (item: GuruPengganti, status: 'Diterima' | 'Ditolak') => {
+    setStatusModal({
+      open: true,
+      id: item.id,
+      status,
+      guruAsliNama: item.guruAsli.nama,
+      guruPenggantiNama: item.guruPengganti.nama,
+    })
+  }
+
+  const closeStatusModal = () => {
+    if (updatingStatus) return
+    setStatusModal({
+      open: false,
+      id: 0,
+      status: '',
+      guruAsliNama: '',
+      guruPenggantiNama: '',
+    })
+  }
+
   const handleUpdateStatus = async (id: number, status: string) => {
     try {
       const res = await fetch('/api/guru-pengganti', {
@@ -144,18 +194,71 @@ export default function GuruPenggantiPage() {
     }
   }
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('Yakin ingin menghapus data ini?')) return
+  const handleConfirmUpdateStatus = async () => {
+    if (!statusModal.id || !statusModal.status) return
 
     try {
-      const res = await fetch(`/api/guru-pengganti?id=${id}`, { method: 'DELETE' })
+      setUpdatingStatus(true)
+      const res = await fetch('/api/guru-pengganti', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: statusModal.id, status: statusModal.status })
+      })
+
+      if (res.ok) {
+        alert('Status berhasil diupdate!')
+        closeStatusModal()
+        fetchPengganti()
+      } else {
+        const error = await res.json()
+        alert(error.error || 'Gagal update status')
+      }
+    } catch (error) {
+      console.error('Error:', error)
+      alert('Gagal update status')
+    } finally {
+      setUpdatingStatus(false)
+    }
+  }
+
+  const openDeleteModal = (item: GuruPengganti) => {
+    setDeleteModal({
+      open: true,
+      id: item.id,
+      guruAsliNama: item.guruAsli.nama,
+      guruPenggantiNama: item.guruPengganti.nama,
+    })
+  }
+
+  const closeDeleteModal = () => {
+    if (deleting) return
+    setDeleteModal({
+      open: false,
+      id: 0,
+      guruAsliNama: '',
+      guruPenggantiNama: '',
+    })
+  }
+
+  const handleDelete = async () => {
+    if (!deleteModal.id) return
+
+    try {
+      setDeleting(true)
+      const res = await fetch(`/api/guru-pengganti?id=${deleteModal.id}`, { method: 'DELETE' })
       if (res.ok) {
         alert('Data berhasil dihapus')
+        closeDeleteModal()
         fetchPengganti()
+      } else {
+        const error = await res.json()
+        alert(error.error || 'Gagal menghapus data')
       }
     } catch (error) {
       console.error('Error:', error)
       alert('Gagal menghapus data')
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -363,14 +466,14 @@ export default function GuruPenggantiPage() {
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => handleUpdateStatus(item.id, 'Diterima')}
+                              onClick={() => openStatusModal(item, 'Diterima')}
                             >
                               Terima
                             </Button>
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => handleUpdateStatus(item.id, 'Ditolak')}
+                              onClick={() => openStatusModal(item, 'Ditolak')}
                             >
                               Tolak
                             </Button>
@@ -388,7 +491,7 @@ export default function GuruPenggantiPage() {
                         <Button
                           size="sm"
                           variant="destructive"
-                          onClick={() => handleDelete(item.id)}
+                          onClick={() => openDeleteModal(item)}
                         >
                           Hapus
                         </Button>
@@ -401,6 +504,51 @@ export default function GuruPenggantiPage() {
           </table>
         </div>
       </Card>
+
+      <Dialog open={deleteModal.open} onOpenChange={(open) => !open && closeDeleteModal()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Konfirmasi Hapus Guru Pengganti</DialogTitle>
+            <DialogDescription>
+              Anda akan menghapus penugasan guru pengganti dari{' '}
+              <strong>{deleteModal.guruAsliNama || '-'}</strong> ke{' '}
+              <strong>{deleteModal.guruPenggantiNama || '-'}</strong>. Lanjutkan?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={closeDeleteModal} disabled={deleting}>
+              Batal
+            </Button>
+            <Button type="button" variant="destructive" onClick={handleDelete} disabled={deleting}>
+              {deleting ? 'Memproses...' : 'Hapus'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={statusModal.open} onOpenChange={(open) => !open && closeStatusModal()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              Konfirmasi {statusModal.status === 'Diterima' ? 'Terima' : 'Tolak'} Penugasan
+            </DialogTitle>
+            <DialogDescription>
+              Anda akan mengubah status penugasan dari{' '}
+              <strong>{statusModal.guruAsliNama || '-'}</strong> ke{' '}
+              <strong>{statusModal.guruPenggantiNama || '-'}</strong> menjadi{' '}
+              <strong>{statusModal.status || '-'}</strong>. Lanjutkan?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={closeStatusModal} disabled={updatingStatus}>
+              Batal
+            </Button>
+            <Button type="button" onClick={handleConfirmUpdateStatus} disabled={updatingStatus}>
+              {updatingStatus ? 'Memproses...' : 'Ya, Lanjutkan'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

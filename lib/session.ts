@@ -4,13 +4,50 @@ import { SessionUser } from './auth';
 
 const SESSION_COOKIE_NAME = 'session';
 
-export async function createSession(user: SessionUser): Promise<void> {
+function encodeSessionValue(user: SessionUser): string {
+  const json = JSON.stringify(user);
+  return Buffer.from(json, 'utf-8').toString('base64url');
+}
+
+function tryParseSession(value: string): SessionUser | null {
+  try {
+    return JSON.parse(value) as SessionUser;
+  } catch {
+    return null;
+  }
+}
+
+function decodeSessionValue(rawValue: string): SessionUser | null {
+  const directParsed = tryParseSession(rawValue);
+  if (directParsed) return directParsed;
+
+  try {
+    const decodedOnce = decodeURIComponent(rawValue);
+    const parsedOnce = tryParseSession(decodedOnce);
+    if (parsedOnce) return parsedOnce;
+
+    const decodedTwice = decodeURIComponent(decodedOnce);
+    const parsedTwice = tryParseSession(decodedTwice);
+    if (parsedTwice) return parsedTwice;
+  } catch {
+    // ignore decodeURIComponent errors and continue with base64 decoding
+  }
+
+  try {
+    const base64Decoded = Buffer.from(rawValue, 'base64url').toString('utf-8');
+    return tryParseSession(base64Decoded);
+  } catch {
+    return null;
+  }
+}
+
+export async function createSession(user: SessionUser, secureCookie: boolean): Promise<void> {
   const cookieStore = await cookies();
-  const sessionData = JSON.stringify(user);
+  const sessionData = encodeSessionValue(user);
   
   cookieStore.set(SESSION_COOKIE_NAME, sessionData, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: secureCookie,
     sameSite: 'lax',
     maxAge: 60 * 60 * 24 * 7, // 7 days
     path: '/',
@@ -26,7 +63,7 @@ export async function getSession(): Promise<SessionUser | null> {
       return null;
     }
     
-    return JSON.parse(sessionCookie.value) as SessionUser;
+    return decodeSessionValue(sessionCookie.value);
   } catch (error) {
     return null;
   }

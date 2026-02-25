@@ -12,16 +12,53 @@ export default function SiswaPage() {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ id: 0, nama: "", nis: "", kelasId: "" });
   const [search, setSearch] = useState("");
+  const [selectedKelasId, setSelectedKelasId] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(10);
+  const [totalData, setTotalData] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function buildSiswaQueryParams(page: number, limit: number) {
+    const params = new URLSearchParams();
+    params.set("page", page.toString());
+    params.set("limit", limit.toString());
+    if (search.trim()) {
+      params.set("search", search.trim());
+    }
+    if (selectedKelasId) {
+      params.set("kelasId", selectedKelasId);
+    }
+    return params;
+  }
 
   async function fetchSiswa() {
     try {
-      const res = await fetch("/api/siswa");
+      const params = buildSiswaQueryParams(currentPage, pageSize);
+
+      const res = await fetch(`/api/siswa?${params.toString()}`);
       if (!res.ok) throw new Error("Gagal mengambil data siswa");
-      setSiswa(await res.json());
+
+      const result = await res.json();
+      const data = Array.isArray(result) ? result : result.data || [];
+      const meta = result.meta || {
+        page: 1,
+        limit: pageSize,
+        total: data.length,
+        totalPages: 1,
+      };
+
+      setSiswa(data);
+      setTotalData(Number(meta.total || 0));
+      setTotalPages(Math.max(Number(meta.totalPages || 1), 1));
+
+      if (Number(meta.page || 1) !== currentPage) {
+        setCurrentPage(Number(meta.page || 1));
+      }
     } catch (error) {
       setMessage("Error: " + (error as Error).message);
     }
@@ -38,9 +75,12 @@ export default function SiswaPage() {
   }
 
   useEffect(() => {
-    fetchSiswa();
     fetchKelas();
   }, []);
+
+  useEffect(() => {
+    fetchSiswa();
+  }, [currentPage, search, selectedKelasId]);
 
   async function saveSiswa(e: any) {
     e.preventDefault();
@@ -61,6 +101,7 @@ export default function SiswaPage() {
       setMessage(form.id ? "✅ Siswa berhasil diperbarui" : "✅ Siswa berhasil ditambahkan");
       setOpen(false);
       setForm({ id: 0, nama: "", nis: "", kelasId: "" });
+      setCurrentPage(1);
       fetchSiswa();
     } catch (error) {
       setMessage("❌ Error: " + (error as Error).message);
@@ -83,6 +124,9 @@ export default function SiswaPage() {
       }
 
       setMessage("✅ Siswa berhasil dihapus");
+      if (siswa.length === 1 && currentPage > 1) {
+        setCurrentPage((prev) => prev - 1);
+      }
       fetchSiswa();
     } catch (error) {
       setMessage("❌ Error: " + (error as Error).message);
@@ -147,6 +191,7 @@ export default function SiswaPage() {
 
           setMessage(successMessage);
           setUploadModalOpen(false);
+          setCurrentPage(1);
           fetchSiswa();
           
           // Reset file input
@@ -166,17 +211,112 @@ export default function SiswaPage() {
     });
   }
 
-  const filteredSiswa = siswa.filter((s) =>
-    s.nama.toLowerCase().includes(search.toLowerCase()) ||
-    s.nis.toLowerCase().includes(search.toLowerCase()) ||
-    s.kelas?.nama.toLowerCase().includes(search.toLowerCase())
-  );
+  async function exportSiswaPDF() {
+    setExportLoading(true);
+    setMessage("");
+    try {
+      const exportLimit = 100;
+      const firstParams = buildSiswaQueryParams(1, exportLimit);
+      const firstRes = await fetch(`/api/siswa?${firstParams.toString()}`);
+
+      if (!firstRes.ok) {
+        throw new Error("Gagal mengambil data siswa untuk export");
+      }
+
+      const firstResult = await firstRes.json();
+      const firstData = firstResult?.data || [];
+      const exportTotalPages = Number(firstResult?.meta?.totalPages || 1);
+
+      const allData = [...firstData];
+
+      for (let page = 2; page <= exportTotalPages; page++) {
+        const params = buildSiswaQueryParams(page, exportLimit);
+        const res = await fetch(`/api/siswa?${params.toString()}`);
+        if (!res.ok) {
+          throw new Error(`Gagal mengambil data export pada halaman ${page}`);
+        }
+
+        const result = await res.json();
+        const pageData = result?.data || [];
+        allData.push(...pageData);
+      }
+
+      if (allData.length === 0) {
+        setMessage("❌ Tidak ada data siswa untuk diexport");
+        return;
+      }
+
+      const { jsPDF } = await import("jspdf");
+      const autoTable = (await import("jspdf-autotable")).default;
+      const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
+
+      doc.setFontSize(14);
+      doc.text("Laporan Data Siswa", 40, 40);
+      doc.setFontSize(10);
+      doc.text(`Tanggal Export: ${new Date().toLocaleString("id-ID")}`, 40, 58);
+      doc.text(`Pencarian: ${search.trim() || "-"}`, 40, 74);
+
+      const selectedKelasNama =
+        kelas.find((k) => String(k.id) === String(selectedKelasId))?.nama || "Semua Kelas";
+      doc.text(`Filter Kelas: ${selectedKelasNama}`, 40, 90);
+
+      autoTable(doc, {
+        startY: 110,
+        head: [["No", "Nama", "NIS", "Kelas"]],
+        body: allData.map((item: any, index: number) => [
+          index + 1,
+          item.nama,
+          item.nis,
+          item.kelas?.nama || "-",
+        ]),
+        styles: { fontSize: 9, cellPadding: 4 },
+        headStyles: { fillColor: [79, 70, 229] },
+      });
+
+      const tableFinalY = (doc as any).lastAutoTable?.finalY ?? 110;
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const pageWidth = doc.internal.pageSize.getWidth();
+
+      if (tableFinalY + 120 > pageHeight) {
+        doc.addPage();
+      }
+
+      doc.setFontSize(10);
+      const signatureY = doc.internal.pageSize.getHeight() - 120;
+      const signatureX = pageWidth - 200;
+      const printedDate = new Date().toLocaleDateString("id-ID", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      });
+
+      doc.text(`................, ${printedDate}`, signatureX, signatureY);
+      doc.text("Kepala Sekolah,", signatureX, signatureY + 18);
+      doc.text("(_________________________)", signatureX, signatureY + 92);
+
+      const dateLabel = new Date().toISOString().split("T")[0];
+      doc.save(`data_siswa_${dateLabel}.pdf`);
+
+      setMessage(`✅ Export PDF berhasil (${allData.length} data siswa)`);
+    } catch (error) {
+      setMessage("❌ Error export PDF: " + (error as Error).message);
+    } finally {
+      setExportLoading(false);
+    }
+  }
 
   return (
     <main className="space-y-6">
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-3xl font-bold text-gray-800">👨‍🎓 Data Siswa</h1>
         <div className="flex gap-2">
+          <Button
+            onClick={exportSiswaPDF}
+            disabled={exportLoading}
+            className="bg-amber-600 hover:bg-amber-700"
+          >
+            <Download size={18} /> {exportLoading ? "Export..." : "Export PDF"}
+          </Button>
           <Button 
             onClick={() => setUploadModalOpen(true)}
             className="bg-green-600 hover:bg-green-700"
@@ -196,37 +336,56 @@ export default function SiswaPage() {
       )}
 
       <div className="mb-4">
-        <input
-          type="text"
-          placeholder="🔍 Cari berdasarkan nama, NIS, atau kelas..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full border p-3 rounded focus:ring focus:ring-indigo-200"
-        />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <input
+            type="text"
+            placeholder="🔍 Cari berdasarkan nama, NIS, atau kelas..."
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="md:col-span-2 w-full border p-3 rounded focus:ring focus:ring-indigo-200"
+          />
+          <select
+            value={selectedKelasId}
+            onChange={(e) => {
+              setSelectedKelasId(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="w-full border p-3 rounded focus:ring focus:ring-indigo-200"
+          >
+            <option value="">Semua Kelas</option>
+            {kelas.map((k) => (
+              <option key={k.id} value={k.id}>
+                {k.nama}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <TableCard
         title="Daftar Siswa"
         columns={["Nama", "NIS", "Kelas"]}
-        data={filteredSiswa.map((s) => ({ 
+        data={siswa.map((s) => ({ 
           Nama: s.nama, 
           NIS: s.nis,
-          Kelas: s.kelas?.nama || "-"
+          Kelas: s.kelas?.nama || "-",
+          _rawData: s,
         }))}
-        actions={(s: any) => (
+        actions={(row: any) => (
           <div className="flex justify-center gap-3">
             <button 
-              onClick={() => { 
-                const siswaData = siswa.find(item => item.nama === s.Nama && item.nis === s.NIS);
-                if (siswaData) {
-                  setForm({
-                    id: siswaData.id,
-                    nama: siswaData.nama,
-                    nis: siswaData.nis,
-                    kelasId: siswaData.kelasId.toString()
-                  });
-                  setOpen(true);
-                }
+              onClick={() => {
+                const siswaData = row._rawData;
+                setForm({
+                  id: Number(siswaData.id),
+                  nama: String(siswaData.nama),
+                  nis: String(siswaData.nis),
+                  kelasId: String(siswaData.kelasId),
+                });
+                setOpen(true);
               }} 
               className="text-blue-600 hover:scale-110 transition"
             >
@@ -234,8 +393,7 @@ export default function SiswaPage() {
             </button>
             <button 
               onClick={() => {
-                const siswaData = siswa.find(item => item.nama === s.Nama && item.nis === s.NIS);
-                if (siswaData) deleteSiswa(siswaData.id);
+                deleteSiswa(row._rawData.id);
               }} 
               className="text-red-600 hover:scale-110 transition" 
               disabled={loading}
@@ -245,6 +403,31 @@ export default function SiswaPage() {
           </div>
         )}
       />
+
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <p className="text-sm text-gray-600">
+          Menampilkan {siswa.length} dari {totalData} data siswa
+        </p>
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            disabled={currentPage <= 1}
+            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+          >
+            Sebelumnya
+          </Button>
+          <span className="text-sm text-gray-700 px-2">
+            Halaman {currentPage} / {totalPages}
+          </span>
+          <Button
+            type="button"
+            disabled={currentPage >= totalPages}
+            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+          >
+            Berikutnya
+          </Button>
+        </div>
+      </div>
 
       {open && (
         <ModalForm open={open} onClose={() => setOpen(false)} title="Form Siswa">

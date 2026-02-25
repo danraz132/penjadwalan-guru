@@ -72,9 +72,6 @@ const availableSlots: TimeSlot[] = [
 
 export async function POST() {
   try {
-    // Hapus jadwal lama
-    await prisma.jadwal.deleteMany({})
-
     // Ambil semua data
     const [matpels, kelas, ruangan] = await Promise.all([
       prisma.matpel.findMany({ include: { guru: true } }),
@@ -89,107 +86,166 @@ export async function POST() {
       )
     }
 
-    // Track penggunaan: guru dan ruangan di setiap slot
+    // Track penggunaan: guru, kelas, dan ruangan di setiap slot
     const scheduledJadwal: any[] = []
     const guruSchedule: Map<number, TimeSlot[]> = new Map() // guru -> slot yang sudah dipakai
     const kelasSchedule: Map<number, TimeSlot[]> = new Map() // kelas -> slot yang sudah dipakai
     const ruanganSchedule: Map<number, TimeSlot[]> = new Map() // ruangan -> slot yang sudah dipakai
-    const matpelHours: Map<number, number> = new Map() // matpel -> jam yang sudah dijadwalkan
+    const kelasLoad: Map<number, number> = new Map() // kelas -> total slot yang sudah dijadwalkan
+    const matpelHours: Map<number, number> = new Map() // matpel -> slot yang sudah dijadwalkan
+    const kelasMatpelCount: Map<string, number> = new Map() // `${kelasId}-${matpelId}` -> total slot
 
     // Inisialisasi maps
     for (const m of matpels) {
       matpelHours.set(m.id, 0)
     }
 
-    // Urutkan matpel berdasarkan jam per minggu (ascending) untuk prioritas scheduling
-    const sortedMatpels = [...matpels].sort((a, b) => b.jamPerMinggu - a.jamPerMinggu)
+    for (const k of kelas) {
+      kelasLoad.set(k.id, 0)
+    }
 
-    // Coba schedule setiap mata pelajaran
-    for (const matpel of sortedMatpels) {
-      const hoursNeeded = matpel.jamPerMinggu
-      let hoursScheduled = matpelHours.get(matpel.id) || 0
+    const tikRegex = /\btik\b/i
+    const labKomputer = ruangan.find((r) => /lab\s*komputer/i.test(String(r.nama || '')))
 
-      // Assign ke kelas yang berbeda-beda
-      const selectedKelas = kelas.slice(0, Math.min(hoursNeeded, kelas.length))
+    function isTIKSubject(namaMapel: string): boolean {
+      return tikRegex.test(namaMapel || '')
+    }
 
-      for (const k of selectedKelas) {
-        if (hoursScheduled >= hoursNeeded) break
+    function allowedRoomsForSubject(matpel: (typeof matpels)[number]) {
+      const isTIK = isTIKSubject(matpel.nama)
 
-        // Cari slot yang tersedia
-        let slotFound = false
+      if (!labKomputer) {
+        return ruangan
+      }
+
+      if (isTIK) {
+        return [labKomputer]
+      }
+
+      return ruangan.filter((r) => r.id !== labKomputer.id)
+    }
+
+    function canUseSlot(existingSlots: TimeSlot[], slot: TimeSlot): boolean {
+      return !existingSlots.some(
+        (s) =>
+          s.hari === slot.hari &&
+          isTimeConflict(s.jamMulai, s.jamSelesai, slot.jamMulai, slot.jamSelesai)
+      )
+    }
+
+    function tryAssign(matpel: (typeof matpels)[number]): boolean {
+      const kelasSorted = [...kelas].sort((a, b) => {
+        const loadA = kelasLoad.get(a.id) || 0
+        const loadB = kelasLoad.get(b.id) || 0
+        if (loadA !== loadB) return loadA - loadB
+
+        const pairA = kelasMatpelCount.get(`${a.id}-${matpel.id}`) || 0
+        const pairB = kelasMatpelCount.get(`${b.id}-${matpel.id}`) || 0
+        return pairA - pairB
+      })
+
+      for (const k of kelasSorted) {
+        const kelasSlots = kelasSchedule.get(k.id) || []
+        const guruSlots = guruSchedule.get(matpel.guruId) || []
+
         for (const slot of availableSlots) {
-          // Cek konflik guru
-          const guruSlots = guruSchedule.get(matpel.guruId) || []
-          const guruConflict = guruSlots.some(
-            (s) =>
-              s.hari === slot.hari &&
-              isTimeConflict(s.jamMulai, s.jamSelesai, slot.jamMulai, slot.jamSelesai)
-          )
+          if (!canUseSlot(kelasSlots, slot)) continue
+          if (!canUseSlot(guruSlots, slot)) continue
 
-          if (guruConflict) continue
+          const allowedRooms = allowedRoomsForSubject(matpel)
+          for (const r of allowedRooms) {
+            const ruanganSlots = ruanganSchedule.get(r.id) || []
+            if (!canUseSlot(ruanganSlots, slot)) continue
 
-          // Cek konflik kelas
-          const kelasSlots = kelasSchedule.get(k.id) || []
-          const kelasConflict = kelasSlots.some(
-            (s) =>
-              s.hari === slot.hari &&
-              isTimeConflict(s.jamMulai, s.jamSelesai, slot.jamMulai, slot.jamSelesai)
-          )
+            scheduledJadwal.push({
+              kelasId: k.id,
+              matpelId: matpel.id,
+              guruId: matpel.guruId,
+              ruanganId: r.id,
+              hari: slot.hari,
+              jamMulai: slot.jamMulai,
+              jamSelesai: slot.jamSelesai,
+            })
 
-          if (kelasConflict) continue
+            guruSchedule.set(matpel.guruId, [...guruSlots, slot])
+            kelasSchedule.set(k.id, [...kelasSlots, slot])
+            ruanganSchedule.set(r.id, [...ruanganSlots, slot])
+            kelasLoad.set(k.id, (kelasLoad.get(k.id) || 0) + 1)
+            matpelHours.set(matpel.id, (matpelHours.get(matpel.id) || 0) + 1)
 
-          // Cek konflik ruangan
-          const ruanganSlots = ruanganSchedule.get(ruangan[0].id) || []
-          const ruanganConflict = ruanganSlots.some(
-            (s) =>
-              s.hari === slot.hari &&
-              isTimeConflict(s.jamMulai, s.jamSelesai, slot.jamMulai, slot.jamSelesai)
-          )
-
-          if (ruanganConflict) continue
-
-          // Slot valid, tambahkan jadwal
-          scheduledJadwal.push({
-            kelasId: k.id,
-            matpelId: matpel.id,
-            guruId: matpel.guruId,
-            ruanganId: ruangan[0].id,
-            hari: slot.hari,
-            jamMulai: slot.jamMulai,
-            jamSelesai: slot.jamSelesai,
-          })
-
-          // Update tracking
-          guruSchedule.set(matpel.guruId, [...guruSlots, slot])
-          kelasSchedule.set(k.id, [...(kelasSchedule.get(k.id) || []), slot])
-          ruanganSchedule.set(ruangan[0].id, [...ruanganSlots, slot])
-          matpelHours.set(matpel.id, hoursScheduled + 1)
-
-          hoursScheduled += 1
-          slotFound = true
-          break
+            const pairKey = `${k.id}-${matpel.id}`
+            kelasMatpelCount.set(pairKey, (kelasMatpelCount.get(pairKey) || 0) + 1)
+            return true
+          }
         }
+      }
 
-        if (!slotFound) {
-          console.warn(
-            `Tidak bisa schedule ${matpel.nama} untuk kelas ${k.nama} - tidak ada slot tersedia`
-          )
+      return false
+    }
+
+    // Fase 1: pastikan setiap mapel minimal mendapat 1 slot terlebih dahulu
+    const coverageOrder = [...matpels].sort((a, b) => b.jamPerMinggu - a.jamPerMinggu)
+    for (const matpel of coverageOrder) {
+      tryAssign(matpel)
+    }
+
+    // Fase 2: penuhi sisa kebutuhan jam mapel secara bertahap dan merata
+    let progress = true
+    while (progress) {
+      progress = false
+
+      const remaining = [...matpels]
+        .filter((m) => (matpelHours.get(m.id) || 0) < m.jamPerMinggu)
+        .sort((a, b) => {
+          const ratioA = (matpelHours.get(a.id) || 0) / Math.max(a.jamPerMinggu, 1)
+          const ratioB = (matpelHours.get(b.id) || 0) / Math.max(b.jamPerMinggu, 1)
+          if (ratioA !== ratioB) return ratioA - ratioB
+          return b.jamPerMinggu - a.jamPerMinggu
+        })
+
+      for (const matpel of remaining) {
+        const assigned = tryAssign(matpel)
+        if (assigned) {
+          progress = true
         }
       }
     }
 
-    // Simpan ke database
-    const created = await prisma.jadwal.createMany({
-      data: scheduledJadwal,
+    const notScheduledMapel = matpels.filter((m) => (matpelHours.get(m.id) || 0) === 0)
+    if (notScheduledMapel.length > 0) {
+      return NextResponse.json(
+        {
+          error: 'Gagal membuat jadwal: ada mata pelajaran yang belum mendapat hari/jam',
+          detail: notScheduledMapel.map((m) => m.nama),
+        },
+        { status: 400 }
+      )
+    }
+
+    // Simpan ke database secara aman (replace jadwal lama hanya jika generate sukses)
+    const created = await prisma.$transaction(async (tx) => {
+      await tx.guruPengganti.deleteMany({})
+      await tx.jadwal.deleteMany({})
+
+      return tx.jadwal.createMany({
+        data: scheduledJadwal,
+      })
     })
 
     return NextResponse.json({
       message: 'Jadwal berhasil dibuat secara otomatis',
       totalJadwal: created.count,
+      totalMapelTerjadwal: [...matpelHours.values()].filter((value) => value > 0).length,
       jadwal: scheduledJadwal,
     })
   } catch (error) {
     console.error('Error generating schedule:', error)
+    if ((error as any)?.code === 'P2003') {
+      return NextResponse.json(
+        { error: 'Gagal menghapus jadwal lama karena masih dipakai data lain' },
+        { status: 400 }
+      )
+    }
     return NextResponse.json({ error: 'Gagal membuat jadwal' }, { status: 500 })
   }
 }

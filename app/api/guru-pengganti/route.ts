@@ -56,14 +56,20 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { absensiId, jadwalId, guruAsliId, guruPenggantiId, tanggal, catatan } = body
 
+    const parsedAbsensiId = Number(absensiId)
+    const parsedJadwalId = Number(jadwalId)
+    const parsedGuruAsliId = Number(guruAsliId)
+    const parsedGuruPenggantiId = Number(guruPenggantiId)
+    const parsedTanggal = tanggal ? new Date(tanggal) : null
+
     // Validasi
-    if (!absensiId || !jadwalId || !guruAsliId || !guruPenggantiId || !tanggal) {
+    if (!parsedJadwalId || !parsedGuruAsliId || !parsedGuruPenggantiId || !parsedTanggal) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
     // Cek apakah guru pengganti sudah dijadwalkan di jam yang sama
     const jadwal = await prisma.jadwal.findUnique({
-      where: { id: parseInt(jadwalId) }
+      where: { id: parsedJadwalId }
     })
 
     if (!jadwal) {
@@ -73,7 +79,7 @@ export async function POST(request: Request) {
     // Cek konflik jadwal guru pengganti
     const konflik = await prisma.jadwal.findFirst({
       where: {
-        guruId: parseInt(guruPenggantiId),
+        guruId: parsedGuruPenggantiId,
         hari: jadwal.hari,
         OR: [
           {
@@ -99,14 +105,52 @@ export async function POST(request: Request) {
       }, { status: 400 })
     }
 
+    let finalAbsensiId = parsedAbsensiId
+
+    if (!finalAbsensiId) {
+      const startOfDay = new Date(parsedTanggal)
+      startOfDay.setHours(0, 0, 0, 0)
+
+      const endOfDay = new Date(parsedTanggal)
+      endOfDay.setHours(23, 59, 59, 999)
+
+      const existingAbsensi = await prisma.absensiGuru.findFirst({
+        where: {
+          guruId: parsedGuruAsliId,
+          tanggal: {
+            gte: startOfDay,
+            lte: endOfDay,
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      })
+
+      if (existingAbsensi) {
+        finalAbsensiId = existingAbsensi.id
+      } else {
+        const createdAbsensi = await prisma.absensiGuru.create({
+          data: {
+            guruId: parsedGuruAsliId,
+            tanggal: parsedTanggal,
+            status: 'Izin',
+            keterangan: 'Dibuat otomatis dari penentuan guru pengganti manual',
+          },
+        })
+
+        finalAbsensiId = createdAbsensi.id
+      }
+    }
+
     // Buat data guru pengganti
     const guruPengganti = await prisma.guruPengganti.create({
       data: {
-        absensiId: parseInt(absensiId),
-        jadwalId: parseInt(jadwalId),
-        guruAsliId: parseInt(guruAsliId),
-        guruPenggantiId: parseInt(guruPenggantiId),
-        tanggal: new Date(tanggal),
+        absensiId: finalAbsensiId,
+        jadwalId: parsedJadwalId,
+        guruAsliId: parsedGuruAsliId,
+        guruPenggantiId: parsedGuruPenggantiId,
+        tanggal: parsedTanggal,
         status: 'Menunggu',
         catatan
       },

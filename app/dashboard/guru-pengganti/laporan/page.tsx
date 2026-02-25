@@ -415,7 +415,7 @@ export default function LaporanGuruPenggantiPage() {
 
             {/* Footer */}
             <div className="mt-8 pt-6 border-t border-gray-300">
-              <div className="flex justify-between items-center text-sm text-gray-600">
+              <div className="flex justify-between items-start gap-8 text-sm text-gray-600">
                 <p>
                   Dicetak pada: {new Date().toLocaleDateString('id-ID', {
                     day: 'numeric',
@@ -423,7 +423,15 @@ export default function LaporanGuruPenggantiPage() {
                     year: 'numeric',
                   })}
                 </p>
-                <p>Sistem Penjadwalan Guru</p>
+                <div className="text-center min-w-[220px]">
+                  <p>................, {new Date().toLocaleDateString('id-ID', {
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric',
+                  })}</p>
+                  <p className="mt-1">Kepala Sekolah,</p>
+                  <p className="mt-16 font-medium">(_________________________)</p>
+                </div>
               </div>
             </div>
           </div>
